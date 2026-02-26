@@ -82,53 +82,117 @@ static DXGI_FORMAT GetClearFormat(DXGI_FORMAT Fmt, D3D12_RESOURCE_FLAGS Flags)
     return Fmt;
 }
 
-D3D12_RESOURCE_DESC TextureD3D12Impl::GetD3D12TextureDesc() const
+D3D12_RESOURCE_DESC TextureD3D12Impl::GetD3D12ResourceDesc(const TextureDesc& Desc)
 {
-    D3D12_RESOURCE_DESC Desc = {};
+    D3D12_RESOURCE_DESC d3d12Desc = {};
 
-    Desc.Alignment = 0;
-    if (m_Desc.IsArray())
-        Desc.DepthOrArraySize = StaticCast<UINT16>(m_Desc.ArraySize);
-    else if (m_Desc.Is3D())
-        Desc.DepthOrArraySize = StaticCast<UINT16>(m_Desc.Depth);
+    d3d12Desc.Alignment = 0;
+    if (Desc.IsArray())
+        d3d12Desc.DepthOrArraySize = StaticCast<UINT16>(Desc.ArraySize);
+    else if (Desc.Is3D())
+        d3d12Desc.DepthOrArraySize = StaticCast<UINT16>(Desc.Depth);
     else
-        Desc.DepthOrArraySize = 1;
+        d3d12Desc.DepthOrArraySize = 1;
 
-    if (m_Desc.Is1D())
-        Desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE1D;
-    else if (m_Desc.Is2D())
-        Desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    else if (m_Desc.Is3D())
-        Desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+    if (Desc.Is1D())
+        d3d12Desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+    else if (Desc.Is2D())
+        d3d12Desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    else if (Desc.Is3D())
+        d3d12Desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
     else
     {
         LOG_ERROR_AND_THROW("Unknown texture type");
     }
 
-    Desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-    if (m_Desc.BindFlags & BIND_RENDER_TARGET)
-        Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-    if (m_Desc.BindFlags & BIND_DEPTH_STENCIL)
-        Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-    if ((m_Desc.BindFlags & BIND_UNORDERED_ACCESS) || (m_Desc.MiscFlags & MISC_TEXTURE_FLAG_GENERATE_MIPS))
-        Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-    if ((m_Desc.BindFlags & (BIND_SHADER_RESOURCE | BIND_INPUT_ATTACHMENT)) == 0 && (m_Desc.BindFlags & BIND_DEPTH_STENCIL) != 0)
-        Desc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+    d3d12Desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    if (Desc.BindFlags & BIND_RENDER_TARGET)
+        d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    if (Desc.BindFlags & BIND_DEPTH_STENCIL)
+        d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+    if ((Desc.BindFlags & BIND_UNORDERED_ACCESS) || (Desc.MiscFlags & MISC_TEXTURE_FLAG_GENERATE_MIPS))
+        d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    if ((Desc.BindFlags & (BIND_SHADER_RESOURCE | BIND_INPUT_ATTACHMENT)) == 0 && (Desc.BindFlags & BIND_DEPTH_STENCIL) != 0)
+        d3d12Desc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 
-    DXGI_FORMAT Format = TexFormatToDXGI_Format(m_Desc.Format, m_Desc.BindFlags);
-    if (Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB && (Desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
-        Desc.Format = DXGI_FORMAT_R8G8B8A8_TYPELESS;
+    DXGI_FORMAT Format = TexFormatToDXGI_Format(Desc.Format, Desc.BindFlags);
+    if (Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB && (d3d12Desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+        d3d12Desc.Format = DXGI_FORMAT_R8G8B8A8_TYPELESS;
     else
-        Desc.Format = Format;
+        d3d12Desc.Format = Format;
 
-    Desc.Height             = UINT{m_Desc.Height};
-    Desc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    Desc.MipLevels          = StaticCast<UINT16>(m_Desc.MipLevels);
-    Desc.SampleDesc.Count   = m_Desc.SampleCount;
-    Desc.SampleDesc.Quality = 0;
-    Desc.Width              = UINT64{m_Desc.Width};
+    d3d12Desc.Height             = UINT{Desc.Height};
+    d3d12Desc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    d3d12Desc.MipLevels          = StaticCast<UINT16>(Desc.MipLevels);
+    d3d12Desc.SampleDesc.Count   = Desc.SampleCount;
+    d3d12Desc.SampleDesc.Quality = 0;
+    d3d12Desc.Width              = UINT64{Desc.Width};
 
-    return Desc;
+    return d3d12Desc;
+}
+
+D3D12_RESOURCE_DESC TextureD3D12Impl::GetD3D12TextureDesc() const
+{
+    return GetD3D12ResourceDesc(m_Desc);
+}
+
+TextureD3D12Impl::TextureD3D12Impl(IReferenceCounters*        pRefCounters,
+                                   FixedBlockMemoryAllocator& TexViewObjAllocator,
+                                   RenderDeviceD3D12Impl*     pRenderDeviceD3D12,
+                                   const TextureDesc&         TexDesc,
+                                   IDeviceMemory*             pMemory,
+                                   Uint64                     MemoryOffset) :
+    TTextureBase{pRefCounters, TexViewObjAllocator, pRenderDeviceD3D12, TexDesc}
+{
+    D3D12_RESOURCE_DESC d3d12TexDesc = GetD3D12TextureDesc();
+
+    ID3D12Device*       pd3d12Device = pRenderDeviceD3D12->GetD3D12Device();
+    IDeviceMemoryD3D12* pDevMemD3D12 = ClassPtrCast<IDeviceMemoryD3D12>(pMemory);
+
+    if (UINT8 FormatPlaneCount = D3D12GetFormatPlaneCount(pd3d12Device, d3d12TexDesc.Format))
+        m_FormatPlaneCount = FormatPlaneCount;
+
+    D3D12_CLEAR_VALUE  ClearValue  = {};
+    D3D12_CLEAR_VALUE* pClearValue = nullptr;
+    if (d3d12TexDesc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
+    {
+        if (m_Desc.ClearValue.Format != TEX_FORMAT_UNKNOWN)
+            ClearValue.Format = TexFormatToDXGI_Format(m_Desc.ClearValue.Format);
+        else
+        {
+            DXGI_FORMAT Format = TexFormatToDXGI_Format(m_Desc.Format, m_Desc.BindFlags);
+            ClearValue.Format  = GetClearFormat(Format, d3d12TexDesc.Flags);
+        }
+
+        if (d3d12TexDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+        {
+            for (int i = 0; i < 4; ++i)
+                ClearValue.Color[i] = m_Desc.ClearValue.Color[i];
+        }
+        else if (d3d12TexDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+        {
+            ClearValue.DepthStencil.Depth   = m_Desc.ClearValue.DepthStencil.Depth;
+            ClearValue.DepthStencil.Stencil = m_Desc.ClearValue.DepthStencil.Stencil;
+        }
+        pClearValue = &ClearValue;
+    }
+
+    D3D12_RESOURCE_ALLOCATION_INFO info = pd3d12Device->GetResourceAllocationInfo(0, 1, &d3d12TexDesc);
+    DeviceMemoryRangeD3D12         range = pDevMemD3D12->GetRange(MemoryOffset, info.SizeInBytes);
+
+    HRESULT hr = pd3d12Device->CreatePlacedResource(range.pHandle, range.Offset, &d3d12TexDesc, D3D12_RESOURCE_STATE_COMMON, pClearValue,
+                                                    __uuidof(m_pd3d12Resource),
+                                                    reinterpret_cast<void**>(static_cast<ID3D12Resource**>(&m_pd3d12Resource)));
+    if (FAILED(hr))
+        LOG_ERROR_AND_THROW("Failed to create placed D3D12 texture");
+
+    if (*m_Desc.Name != 0)
+        m_pd3d12Resource->SetName(WidenString(m_Desc.Name).c_str());
+
+    SetState(RESOURCE_STATE_COMMON);
+
+    m_pPlacedMemory = pMemory;
+    m_pPlacedMemory->AddRef();
 }
 
 TextureD3D12Impl::TextureD3D12Impl(IReferenceCounters*        pRefCounters,
@@ -641,6 +705,8 @@ TextureD3D12Impl::~TextureD3D12Impl()
     {
         FREE(GetRawAllocator(), m_StagingFootprints);
     }
+    if (m_pPlacedMemory)
+        m_pPlacedMemory->Release();
 }
 
 void TextureD3D12Impl::CreateSRV(const TextureViewDesc& SRVDesc, D3D12_CPU_DESCRIPTOR_HANDLE SRVHandle)

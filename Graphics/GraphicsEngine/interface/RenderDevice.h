@@ -97,6 +97,26 @@ DILIGENT_BEGIN_INTERFACE(IRenderDevice, IObject)
                                       const BufferData*    pBuffData,
                                       IBuffer**            ppBuffer) PURE;
 
+    /// Returns the memory requirements for a buffer.
+
+    /// \param [in]  Desc         - Buffer description.
+    /// \param [out] pRequirements - Address of the memory location where the memory requirements will be written.
+    VIRTUAL void METHOD(GetBufferMemoryRequirements)(THIS_
+                                                     const BufferDesc REF Desc,
+                                                     MemoryRequirements*  pRequirements) PURE;
+
+    /// Creates a new buffer object and places it in the provided device memory.
+
+    /// \param [in]  BuffDesc     - Buffer description.
+    /// \param [in]  pMemory      - Pointer to the device memory object where the buffer will be placed.
+    /// \param [in]  MemoryOffset - Offset in the device memory where the buffer will be placed.
+    /// \param [out] ppBuffer     - Address of the memory location where a pointer to the buffer interface will be written.
+    VIRTUAL void METHOD(CreatePlacedBuffer)(THIS_
+                                            const BufferDesc REF BuffDesc,
+                                            IDeviceMemory*       pMemory,
+                                            Uint64               MemoryOffset,
+                                            IBuffer**            ppBuffer) PURE;
+
     /// Creates a new shader object
 
     /// \param [in]  ShaderCI - Shader create info, see Diligent::ShaderCreateInfo for details.
@@ -148,6 +168,26 @@ DILIGENT_BEGIN_INTERFACE(IRenderDevice, IObject)
                                        const TextureDesc REF TexDesc,
                                        const TextureData*    pData,
                                        ITexture**            ppTexture) PURE;
+
+    /// Returns the memory requirements for a texture.
+
+    /// \param [in]  Desc         - Texture description.
+    /// \param [out] pRequirements - Address of the memory location where the memory requirements will be written.
+    VIRTUAL void METHOD(GetTextureMemoryRequirements)(THIS_
+                                                      const TextureDesc REF Desc,
+                                                      MemoryRequirements*   pRequirements) PURE;
+
+    /// Creates a new texture object and places it in the provided device memory.
+
+    /// \param [in]  TexDesc      - Texture description.
+    /// \param [in]  pMemory      - Pointer to the device memory object where the texture will be placed.
+    /// \param [in]  MemoryOffset - Offset in the device memory where the texture will be placed.
+    /// \param [out] ppTexture    - Address of the memory location where a pointer to the texture interface will be written.
+    VIRTUAL void METHOD(CreatePlacedTexture)(THIS_
+                                             const TextureDesc REF TexDesc,
+                                             IDeviceMemory*        pMemory,
+                                             Uint64                MemoryOffset,
+                                             ITexture**            ppTexture) PURE;
 
     /// Creates a new sampler object
 
@@ -458,8 +498,12 @@ DILIGENT_END_INTERFACE
 
 // clang-format off
 #    define IRenderDevice_CreateBuffer(This, ...)                    CALL_IFACE_METHOD(RenderDevice, CreateBuffer,                    This, __VA_ARGS__)
+#    define IRenderDevice_GetBufferMemoryRequirements(This, ...)     CALL_IFACE_METHOD(RenderDevice, GetBufferMemoryRequirements,     This, __VA_ARGS__)
+#    define IRenderDevice_CreatePlacedBuffer(This, ...)              CALL_IFACE_METHOD(RenderDevice, CreatePlacedBuffer,              This, __VA_ARGS__)
 #    define IRenderDevice_CreateShader(This, ...)                    CALL_IFACE_METHOD(RenderDevice, CreateShader,                    This, __VA_ARGS__)
 #    define IRenderDevice_CreateTexture(This, ...)                   CALL_IFACE_METHOD(RenderDevice, CreateTexture,                   This, __VA_ARGS__)
+#    define IRenderDevice_GetTextureMemoryRequirements(This, ...)    CALL_IFACE_METHOD(RenderDevice, GetTextureMemoryRequirements,    This, __VA_ARGS__)
+#    define IRenderDevice_CreatePlacedTexture(This, ...)             CALL_IFACE_METHOD(RenderDevice, CreatePlacedTexture,             This, __VA_ARGS__)
 #    define IRenderDevice_CreateSampler(This, ...)                   CALL_IFACE_METHOD(RenderDevice, CreateSampler,                   This, __VA_ARGS__)
 #    define IRenderDevice_CreateResourceMapping(This, ...)           CALL_IFACE_METHOD(RenderDevice, CreateResourceMapping,           This, __VA_ARGS__)
 #    define IRenderDevice_CreateGraphicsPipelineState(This, ...)     CALL_IFACE_METHOD(RenderDevice, CreateGraphicsPipelineState,     This, __VA_ARGS__)

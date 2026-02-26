@@ -41,6 +41,30 @@
 namespace Diligent
 {
 
+D3D12_RESOURCE_DESC BufferD3D12Impl::GetD3D12ResourceDesc(const BufferDesc& Desc)
+{
+    D3D12_RESOURCE_DESC d3d12BuffDesc{};
+    d3d12BuffDesc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
+    d3d12BuffDesc.Alignment          = 0;
+    d3d12BuffDesc.Width              = Desc.Size;
+    d3d12BuffDesc.Height             = 1;
+    d3d12BuffDesc.DepthOrArraySize   = 1;
+    d3d12BuffDesc.MipLevels          = 1;
+    d3d12BuffDesc.Format             = DXGI_FORMAT_UNKNOWN;
+    d3d12BuffDesc.SampleDesc.Count   = 1;
+    d3d12BuffDesc.SampleDesc.Quality = 0;
+    // Layout must be D3D12_TEXTURE_LAYOUT_ROW_MAJOR, as buffer memory layouts are
+    // understood by applications and row-major texture data is commonly marshaled through buffers.
+    d3d12BuffDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    d3d12BuffDesc.Flags  = D3D12_RESOURCE_FLAG_NONE;
+    if ((Desc.BindFlags & BIND_UNORDERED_ACCESS) || (Desc.BindFlags & BIND_RAY_TRACING))
+        d3d12BuffDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    if (!(Desc.BindFlags & BIND_SHADER_RESOURCE) && !(Desc.BindFlags & BIND_RAY_TRACING))
+        d3d12BuffDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+
+    return d3d12BuffDesc;
+}
+
 BufferD3D12Impl::BufferD3D12Impl(IReferenceCounters*        pRefCounters,
                                  FixedBlockMemoryAllocator& BuffViewObjMemAllocator,
                                  RenderDeviceD3D12Impl*     pRenderDeviceD3D12,
@@ -85,24 +109,7 @@ BufferD3D12Impl::BufferD3D12Impl(IReferenceCounters*        pRefCounters,
         VERIFY(m_Desc.Usage != USAGE_DYNAMIC || PlatformMisc::CountOneBits(m_Desc.ImmediateContextMask) <= 1,
                "ImmediateContextMask must contain single set bit, this error should've been handled in ValidateBufferDesc()");
 
-        D3D12_RESOURCE_DESC d3d12BuffDesc{};
-        d3d12BuffDesc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
-        d3d12BuffDesc.Alignment          = 0;
-        d3d12BuffDesc.Width              = m_Desc.Size;
-        d3d12BuffDesc.Height             = 1;
-        d3d12BuffDesc.DepthOrArraySize   = 1;
-        d3d12BuffDesc.MipLevels          = 1;
-        d3d12BuffDesc.Format             = DXGI_FORMAT_UNKNOWN;
-        d3d12BuffDesc.SampleDesc.Count   = 1;
-        d3d12BuffDesc.SampleDesc.Quality = 0;
-        // Layout must be D3D12_TEXTURE_LAYOUT_ROW_MAJOR, as buffer memory layouts are
-        // understood by applications and row-major texture data is commonly marshaled through buffers.
-        d3d12BuffDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        d3d12BuffDesc.Flags  = D3D12_RESOURCE_FLAG_NONE;
-        if ((m_Desc.BindFlags & BIND_UNORDERED_ACCESS) || (m_Desc.BindFlags & BIND_RAY_TRACING))
-            d3d12BuffDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-        if (!(m_Desc.BindFlags & BIND_SHADER_RESOURCE) && !(m_Desc.BindFlags & BIND_RAY_TRACING))
-            d3d12BuffDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+        D3D12_RESOURCE_DESC d3d12BuffDesc = GetD3D12ResourceDesc(m_Desc);
 
         ID3D12Device* pd3d12Device = pRenderDeviceD3D12->GetD3D12Device();
 
@@ -252,6 +259,54 @@ BufferD3D12Impl::BufferD3D12Impl(IReferenceCounters*        pRefCounters,
         InitSparseProperties();
 }
 
+BufferD3D12Impl::BufferD3D12Impl(IReferenceCounters*        pRefCounters,
+                                 FixedBlockMemoryAllocator& BuffViewObjMemAllocator,
+                                 RenderDeviceD3D12Impl*     pRenderDeviceD3D12,
+                                 const BufferDesc&          BuffDesc,
+                                 IDeviceMemory*             pMemory,
+                                 Uint64                     MemoryOffset) :
+    TBufferBase{
+        pRefCounters,
+        BuffViewObjMemAllocator,
+        pRenderDeviceD3D12,
+        BuffDesc,
+        false,
+    }
+{
+    Uint32 BufferAlignment = 1;
+    if (m_Desc.BindFlags & BIND_UNIFORM_BUFFER)
+        BufferAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+
+    m_Desc.Size = AlignUp(m_Desc.Size, BufferAlignment);
+
+    D3D12_RESOURCE_DESC d3d12BuffDesc = GetD3D12ResourceDesc(m_Desc);
+
+    ID3D12Device*       pd3d12Device = pRenderDeviceD3D12->GetD3D12Device();
+    IDeviceMemoryD3D12* pDevMemD3D12 = ClassPtrCast<IDeviceMemoryD3D12>(pMemory);
+
+    DeviceMemoryRangeD3D12 range = pDevMemD3D12->GetRange(MemoryOffset, m_Desc.Size);
+
+    HRESULT hr = pd3d12Device->CreatePlacedResource(range.pHandle, range.Offset, &d3d12BuffDesc, D3D12_RESOURCE_STATE_COMMON, nullptr,
+                                                    __uuidof(m_pd3d12Resource),
+                                                    reinterpret_cast<void**>(static_cast<ID3D12Resource**>(&m_pd3d12Resource)));
+    if (FAILED(hr))
+        LOG_ERROR_AND_THROW("Failed to create placed D3D12 buffer");
+
+    if (*m_Desc.Name != 0)
+        m_pd3d12Resource->SetName(WidenString(m_Desc.Name).c_str());
+
+    SetState(RESOURCE_STATE_COMMON);
+
+    if (m_Desc.BindFlags & BIND_UNIFORM_BUFFER)
+    {
+        m_CBVDescriptorAllocation = pRenderDeviceD3D12->AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        CreateCBV(m_CBVDescriptorAllocation.GetCpuHandle());
+    }
+
+    m_pPlacedMemory = pMemory;
+    m_pPlacedMemory->AddRef();
+}
+
 static BufferDesc BufferDescFromD3D12Resource(BufferDesc BuffDesc, ID3D12Resource* pd3d12Buffer)
 {
     DEV_CHECK_ERR(BuffDesc.Usage != USAGE_DYNAMIC, "Dynamic buffers cannot be attached to native d3d12 resource");
@@ -328,6 +383,8 @@ BufferD3D12Impl::~BufferD3D12Impl()
 {
     // D3D12 object can only be destroyed when it is no longer used by the GPU
     GetDevice()->SafeReleaseDeviceObject(std::move(m_pd3d12Resource), m_Desc.ImmediateContextMask);
+    if (m_pPlacedMemory)
+        m_pPlacedMemory->Release();
 }
 
 void BufferD3D12Impl::CreateViewInternal(const BufferViewDesc& OrigViewDesc, IBufferView** ppView, bool bIsDefaultView)

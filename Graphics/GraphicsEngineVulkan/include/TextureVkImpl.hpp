@@ -52,6 +52,13 @@ public:
                   const TextureDesc&         TexDesc,
                   const TextureData*         pInitData = nullptr);
 
+    TextureVkImpl(IReferenceCounters*        pRefCounters,
+                  FixedBlockMemoryAllocator& TexViewObjAllocator,
+                  RenderDeviceVkImpl*        pDeviceVk,
+                  const TextureDesc&         TexDesc,
+                  IDeviceMemory*             pMemory,
+                  Uint64                     MemoryOffset);
+
     // Attaches to an existing Vk resource
     TextureVkImpl(IReferenceCounters*        pRefCounters,
                   FixedBlockMemoryAllocator& TexViewObjAllocator,
@@ -98,6 +105,8 @@ public:
     // ("Copying Data Between Buffers and Images")
     static constexpr Uint32 StagingBufferOffsetAlignment = 16; // max texel size - 16 bytes (RGBA32F), max texel block size - 16 bytes.
 
+    static VkImageCreateInfo TextureDescToVkImageCreateInfo(const TextureDesc& Desc, const class RenderDeviceVkImpl* pRenderDeviceVk);
+
 protected:
     void CreateViewInternal(const struct TextureViewDesc& ViewDesc, ITextureView** ppView, bool bIsDefaultView) override;
 
@@ -119,6 +128,7 @@ protected:
     VulkanUtilities::BufferWrapper    m_StagingBuffer;
     VulkanUtilities::MemoryAllocation m_MemoryAllocation;
     VkDeviceSize                      m_StagingDataAlignedOffset = 0;
+    IDeviceMemory*                    m_pPlacedMemory            = nullptr;
 };
 
 } // namespace Diligent

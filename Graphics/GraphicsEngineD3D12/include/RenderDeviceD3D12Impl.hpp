@@ -104,6 +104,16 @@ public:
                                                  const BufferData* pBuffData,
                                                  IBuffer**         ppBuffer) override final;
 
+    /// Implementation of IRenderDevice::GetBufferMemoryRequirements() in Direct3D12 backend.
+    virtual void DILIGENT_CALL_TYPE GetBufferMemoryRequirements(const BufferDesc& Desc,
+                                                                MemoryRequirements* pRequirements) override final;
+
+    /// Implementation of IRenderDevice::CreatePlacedBuffer() in Direct3D12 backend.
+    virtual void DILIGENT_CALL_TYPE CreatePlacedBuffer(const BufferDesc& BuffDesc,
+                                                       IDeviceMemory*    pMemory,
+                                                       Uint64            MemoryOffset,
+                                                       IBuffer**         ppBuffer) override final;
+
     /// Implementation of IRenderDevice::CreateShader() in Direct3D12 backend.
     virtual void DILIGENT_CALL_TYPE CreateShader(const ShaderCreateInfo& ShaderCreateInfo,
                                                  IShader**               ppShader,
@@ -113,6 +123,16 @@ public:
     virtual void DILIGENT_CALL_TYPE CreateTexture(const TextureDesc& TexDesc,
                                                   const TextureData* pData,
                                                   ITexture**         ppTexture) override final;
+
+    /// Implementation of IRenderDevice::GetTextureMemoryRequirements() in Direct3D12 backend.
+    virtual void DILIGENT_CALL_TYPE GetTextureMemoryRequirements(const TextureDesc& Desc,
+                                                                 MemoryRequirements* pRequirements) override final;
+
+    /// Implementation of IRenderDevice::CreatePlacedTexture() in Direct3D12 backend.
+    virtual void DILIGENT_CALL_TYPE CreatePlacedTexture(const TextureDesc& TexDesc,
+                                                        IDeviceMemory*     pMemory,
+                                                        Uint64             MemoryOffset,
+                                                        ITexture**         ppTexture) override final;
 
     void CreateTexture(const TextureDesc&       TexDesc,
                        ID3D12Resource*          pd3d12Texture,

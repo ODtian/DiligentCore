@@ -53,6 +53,10 @@ void ValidateDeviceMemoryDesc(const DeviceMemoryDesc& Desc, const IRenderDevice*
         VERIFY_DEVMEMORY((Desc.PageSize % SparseRes.StandardBlockSize) == 0,
                          "page size (", Desc.PageSize, ") is not a multiple of sparse block size (", SparseRes.StandardBlockSize, ")");
     }
+    else if (Desc.Type == DEVICE_MEMORY_TYPE_PLACED)
+    {
+        VERIFY_DEVMEMORY(Desc.PageSize != 0, "page size must not be zero for placed memory");
+    }
     else
     {
         LOG_DEVMEMORY_ERROR_AND_THROW("Unexpected device memory type");

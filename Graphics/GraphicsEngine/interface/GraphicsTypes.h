@@ -4897,4 +4897,18 @@ DILIGENT_TYPED_ENUM(STATE_TRANSITION_TYPE, Uint8)
     STATE_TRANSITION_TYPE_END
 };
 
+/// Resource memory requirements
+struct MemoryRequirements
+{
+    /// Size of the memory required for the resource, in bytes.
+    Uint64 Size            DEFAULT_INITIALIZER(0);
+
+    /// Alignment required for the resource, in bytes.
+    Uint64 Alignment       DEFAULT_INITIALIZER(0);
+
+    /// Memory type bits. For each bit n set, memory type n is compatible with the resource.
+    Uint32 MemoryTypeBits DEFAULT_INITIALIZER(0);
+};
+typedef struct MemoryRequirements MemoryRequirements;
+
 DILIGENT_END_NAMESPACE // namespace Diligent

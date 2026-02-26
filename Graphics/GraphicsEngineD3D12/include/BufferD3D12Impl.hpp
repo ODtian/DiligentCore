@@ -59,6 +59,13 @@ public:
                     FixedBlockMemoryAllocator& BuffViewObjMemAllocator,
                     RenderDeviceD3D12Impl*     pDeviceD3D12,
                     const BufferDesc&          BuffDesc,
+                    IDeviceMemory*             pMemory,
+                    Uint64                     MemoryOffset);
+
+    BufferD3D12Impl(IReferenceCounters*        pRefCounters,
+                    FixedBlockMemoryAllocator& BuffViewObjMemAllocator,
+                    RenderDeviceD3D12Impl*     pDeviceD3D12,
+                    const BufferDesc&          BuffDesc,
                     RESOURCE_STATE             InitialState,
                     ID3D12Resource*            pd3d12Buffer);
     ~BufferD3D12Impl();
@@ -94,6 +101,8 @@ public:
 
     void CreateCBV(D3D12_CPU_DESCRIPTOR_HANDLE CBVDescriptor, Uint64 Offset = 0, Uint64 Size = 0) const;
 
+    static D3D12_RESOURCE_DESC GetD3D12ResourceDesc(const BufferDesc& Desc);
+
 private:
     virtual void CreateViewInternal(const struct BufferViewDesc& ViewDesc, IBufferView** ppView, bool bIsDefaultView) override;
 
@@ -104,6 +113,7 @@ private:
 
 private:
     DescriptorHeapAllocation m_CBVDescriptorAllocation;
+    IDeviceMemory*             m_pPlacedMemory = nullptr;
 };
 
 } // namespace Diligent

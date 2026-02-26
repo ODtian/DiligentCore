@@ -62,16 +62,16 @@ DeviceMemoryVkImpl::DeviceMemoryVkImpl(IReferenceCounters*           pRefCounter
         if (RefCntAutoPtr<ITextureVk> pTexture{pResource, IID_TextureVk})
         {
             const TextureVkImpl* pTexVk = pTexture.ConstPtr<TextureVkImpl>();
-            if (pTexVk->GetDesc().Usage != USAGE_SPARSE)
-                DEVMEM_CHECK_CREATE_INFO("ppCompatibleResources[", i, "] must be created with USAGE_SPARSE");
+            if (MemCI.Desc.Type == DEVICE_MEMORY_TYPE_SPARSE && pTexVk->GetDesc().Usage != USAGE_SPARSE)
+                DEVMEM_CHECK_CREATE_INFO("ppCompatibleResources[", i, "] must be created with USAGE_SPARSE for sparse memory");
 
             MemoryTypeBits &= LogicalDevice.GetImageMemoryRequirements(pTexVk->GetVkImage()).memoryTypeBits;
         }
         else if (RefCntAutoPtr<IBufferVk> pBuffer{pResource, IID_BufferVk})
         {
             const BufferVkImpl* pBuffVk = pBuffer.ConstPtr<BufferVkImpl>();
-            if (pBuffVk->GetDesc().Usage != USAGE_SPARSE)
-                DEVMEM_CHECK_CREATE_INFO("ppCompatibleResources[", i, "] must be created with USAGE_SPARSE");
+            if (MemCI.Desc.Type == DEVICE_MEMORY_TYPE_SPARSE && pBuffVk->GetDesc().Usage != USAGE_SPARSE)
+                DEVMEM_CHECK_CREATE_INFO("ppCompatibleResources[", i, "] must be created with USAGE_SPARSE for sparse memory");
 
             MemoryTypeBits &= LogicalDevice.GetBufferMemoryRequirements(pBuffVk->GetVkBuffer()).memoryTypeBits;
         }

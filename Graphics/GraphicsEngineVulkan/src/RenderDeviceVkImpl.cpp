@@ -52,6 +52,9 @@
 #include "VulkanTypeConversions.hpp"
 #include "EngineMemory.h"
 #include "QueryManagerVk.hpp"
+#include "BasicMath.hpp"
+
+#include "DeviceMemoryVk.h"
 
 namespace Diligent
 {
@@ -602,6 +605,33 @@ void RenderDeviceVkImpl::CreateBuffer(const BufferDesc& BuffDesc, const BufferDa
     CreateBufferImpl(ppBuffer, BuffDesc, pBuffData);
 }
 
+void RenderDeviceVkImpl::GetBufferMemoryRequirements(const BufferDesc& Desc, MemoryRequirements* pRequirements)
+{
+    if (pRequirements == nullptr) return;
+
+    std::vector<uint32_t> QueueFamilyIndices;
+    VkBufferCreateInfo    VkBuffCI = BufferVkImpl::BufferDescToVkBufferCreateInfo(Desc, this, QueueFamilyIndices);
+
+    VulkanUtilities::BufferWrapper vkBuffer = m_LogicalDevice->CreateBuffer(VkBuffCI, "Temp Buffer");
+    VkMemoryRequirements           MemReqs  = m_LogicalDevice->GetBufferMemoryRequirements(vkBuffer);
+
+    pRequirements->Size           = MemReqs.size;
+    pRequirements->Alignment      = MemReqs.alignment;
+    pRequirements->MemoryTypeBits = MemReqs.memoryTypeBits;
+}
+
+void RenderDeviceVkImpl::CreatePlacedBuffer(const BufferDesc& BuffDesc,
+                                            IDeviceMemory*    pMemory,
+                                            Uint64            MemoryOffset,
+                                            IBuffer**         ppBuffer)
+{
+    DEV_CHECK_ERR(pMemory != nullptr, "pMemory must not be null");
+    DEV_CHECK_ERR(ppBuffer != nullptr, "ppBuffer must not be null");
+    if (!pMemory || !ppBuffer)
+        return;
+    CreateBufferImpl(ppBuffer, BuffDesc, pMemory, MemoryOffset);
+}
+
 
 void RenderDeviceVkImpl::CreateShader(const ShaderCreateInfo& ShaderCI,
                                       IShader**               ppShader,
@@ -642,6 +672,31 @@ void RenderDeviceVkImpl::CreateTexture(const TextureDesc& TexDesc, VkImage vkImg
 void RenderDeviceVkImpl::CreateTexture(const TextureDesc& TexDesc, const TextureData* pData, ITexture** ppTexture)
 {
     CreateTextureImpl(ppTexture, TexDesc, pData);
+}
+
+void RenderDeviceVkImpl::GetTextureMemoryRequirements(const TextureDesc& Desc, MemoryRequirements* pRequirements)
+{
+    if (pRequirements == nullptr) return;
+
+    VkImageCreateInfo    ImageCI = TextureVkImpl::TextureDescToVkImageCreateInfo(Desc, this);
+    VulkanUtilities::ImageWrapper vkImage = m_LogicalDevice->CreateImage(ImageCI, "Temp Image");
+    VkMemoryRequirements          MemReqs = m_LogicalDevice->GetImageMemoryRequirements(vkImage);
+
+    pRequirements->Size           = MemReqs.size;
+    pRequirements->Alignment      = MemReqs.alignment;
+    pRequirements->MemoryTypeBits = MemReqs.memoryTypeBits;
+}
+
+void RenderDeviceVkImpl::CreatePlacedTexture(const TextureDesc& TexDesc,
+                                             IDeviceMemory*     pMemory,
+                                             Uint64             MemoryOffset,
+                                             ITexture**         ppTexture)
+{
+    DEV_CHECK_ERR(pMemory != nullptr, "pMemory must not be null");
+    DEV_CHECK_ERR(ppTexture != nullptr, "ppTexture must not be null");
+    if (!pMemory || !ppTexture)
+        return;
+    CreateTextureImpl(ppTexture, TexDesc, pMemory, MemoryOffset);
 }
 
 void RenderDeviceVkImpl::CreateSampler(const SamplerDesc& SamplerDesc, ISampler** ppSampler)

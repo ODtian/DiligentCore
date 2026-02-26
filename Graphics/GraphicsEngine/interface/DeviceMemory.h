@@ -49,6 +49,9 @@ DILIGENT_TYPED_ENUM(DEVICE_MEMORY_TYPE, Uint8)
 
     /// Indicates that memory will be used for sparse resources.
     DEVICE_MEMORY_TYPE_SPARSE    = 1,
+
+    /// Indicates that memory will be used for placed resources.
+    DEVICE_MEMORY_TYPE_PLACED    = 2,
 };
 
 /// Device memory description

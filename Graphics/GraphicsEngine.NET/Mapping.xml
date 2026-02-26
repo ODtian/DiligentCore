@@ -248,6 +248,11 @@
 		<map param="IRenderDevice::CreateBuffer::pBuffData" attribute="optional" default="null"/>
 		<map param="IRenderDevice::CreateTexture::pData" attribute="optional" default="null"/>
 		<map param="IRenderDevice::Create(.+)PipelineState::PSOCreateInfo" name="createInfo"/>
+		<map param="IRenderDevice::CreateDeviceMemory::ppMemory" return="true"/>
+		<map param="IRenderDevice::CreatePlacedBuffer::ppBuffer" return="true"/>
+		<map param="IRenderDevice::CreatePlacedTexture::ppTexture" return="true"/>
+		<map param="IRenderDevice::GetTextureMemoryRequirements::pRequirements" attribute="out"/>
+		<map param="IRenderDevice::GetBufferMemoryRequirements::pRequirements" attribute="out"/>
 
 		<!--Diligent::IDeviceContext-->
 		<map method="IDeviceContext::SetVertexBuffers" visibility="private"/>

@@ -42,11 +42,12 @@ namespace Diligent
 namespace
 {
 
-D3D12_HEAP_FLAGS GetD3D12HeapFlags(ID3D12Device*   pd3d12Device,
-                                   IDeviceObject** ppResources,
-                                   Uint32          NumResources,
-                                   bool&           AllowMSAA,
-                                   bool&           UseNVApi) noexcept(false)
+D3D12_HEAP_FLAGS GetD3D12HeapFlags(ID3D12Device*      pd3d12Device,
+                                   DEVICE_MEMORY_TYPE  Type,
+                                   IDeviceObject**     ppResources,
+                                   Uint32              NumResources,
+                                   bool&               AllowMSAA,
+                                   bool&               UseNVApi) noexcept(false)
 {
     AllowMSAA = false;
     UseNVApi  = false;
@@ -97,8 +98,8 @@ D3D12_HEAP_FLAGS GetD3D12HeapFlags(ID3D12Device*   pd3d12Device,
             const TextureD3D12Impl* pTexD3D12Impl = pTexture.ConstPtr<TextureD3D12Impl>();
             const TextureDesc&      TexDesc       = pTexD3D12Impl->GetDesc();
 
-            if (TexDesc.Usage != USAGE_SPARSE)
-                LOG_ERROR_AND_THROW("Resource must be created with USAGE_SPARSE");
+            if (Type == DEVICE_MEMORY_TYPE_SPARSE && TexDesc.Usage != USAGE_SPARSE)
+                LOG_ERROR_AND_THROW("Resource must be created with USAGE_SPARSE for sparse memory");
 
             if (TexDesc.SampleCount > 1)
                 AllowMSAA = true;
@@ -121,8 +122,8 @@ D3D12_HEAP_FLAGS GetD3D12HeapFlags(ID3D12Device*   pd3d12Device,
         {
             const BufferDesc& BuffDesc = pBuffer.ConstPtr<BufferD3D12Impl>()->GetDesc();
 
-            if (BuffDesc.Usage != USAGE_SPARSE)
-                LOG_ERROR_AND_THROW("Resource must be created with USAGE_SPARSE");
+            if (Type == DEVICE_MEMORY_TYPE_SPARSE && BuffDesc.Usage != USAGE_SPARSE)
+                LOG_ERROR_AND_THROW("Resource must be created with USAGE_SPARSE for sparse memory");
 
             HeapFlags &= ~D3D12_HEAP_FLAG_DENY_BUFFERS;
             if (BuffDesc.BindFlags & BIND_UNORDERED_ACCESS)
@@ -189,7 +190,7 @@ DeviceMemoryD3D12Impl::DeviceMemoryD3D12Impl(IReferenceCounters*           pRefC
                                              const DeviceMemoryCreateInfo& MemCI) :
     TDeviceMemoryBase{pRefCounters, pDeviceD3D11, MemCI}
 {
-    m_d3d12HeapFlags = GetD3D12HeapFlags(m_pDevice->GetD3D12Device(), MemCI.ppCompatibleResources, MemCI.NumResources, m_AllowMSAA, m_UseNVApi);
+    m_d3d12HeapFlags = GetD3D12HeapFlags(m_pDevice->GetD3D12Device(), MemCI.Desc.Type, MemCI.ppCompatibleResources, MemCI.NumResources, m_AllowMSAA, m_UseNVApi);
 
     if (!Resize(MemCI.InitialSize))
         LOG_ERROR_AND_THROW("Failed to allocate device memory");
@@ -250,7 +251,7 @@ Bool DeviceMemoryD3D12Impl::IsCompatible(IDeviceObject* pResource) const
     {
         bool             AllowMSAA              = false;
         bool             UseNVApi               = false;
-        D3D12_HEAP_FLAGS d3d12RequiredHeapFlags = GetD3D12HeapFlags(m_pDevice->GetD3D12Device(), &pResource, 1, AllowMSAA, UseNVApi);
+        D3D12_HEAP_FLAGS d3d12RequiredHeapFlags = GetD3D12HeapFlags(m_pDevice->GetD3D12Device(), m_Desc.Type, &pResource, 1, AllowMSAA, UseNVApi);
         return ((m_d3d12HeapFlags & d3d12RequiredHeapFlags) == d3d12RequiredHeapFlags) && (!AllowMSAA || m_AllowMSAA) && (UseNVApi == m_UseNVApi);
     }
     catch (...)

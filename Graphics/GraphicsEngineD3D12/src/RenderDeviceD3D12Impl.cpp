@@ -52,6 +52,7 @@
 #include "DeviceMemoryD3D12Impl.hpp"
 #include "PipelineStateCacheD3D12Impl.hpp"
 #include "PipelineResourceSignatureD3D12Impl.hpp"
+#include "DeviceMemoryD3D12.h"
 
 #include "EngineMemory.h"
 #include "D3D12TypeConversions.hpp"
@@ -577,6 +578,30 @@ void RenderDeviceD3D12Impl::CreateBuffer(const BufferDesc& BuffDesc, const Buffe
     CreateBufferImpl(ppBuffer, BuffDesc, pBuffData);
 }
 
+void RenderDeviceD3D12Impl::GetBufferMemoryRequirements(const BufferDesc& Desc, MemoryRequirements* pRequirements)
+{
+    if (pRequirements == nullptr) return;
+
+    D3D12_RESOURCE_DESC d3d12BuffDesc = BufferD3D12Impl::GetD3D12ResourceDesc(Desc);
+
+    D3D12_RESOURCE_ALLOCATION_INFO info = m_pd3d12Device->GetResourceAllocationInfo(0, 1, &d3d12BuffDesc);
+    pRequirements->Size           = info.SizeInBytes;
+    pRequirements->Alignment      = info.Alignment;
+    pRequirements->MemoryTypeBits = 0;
+}
+
+void RenderDeviceD3D12Impl::CreatePlacedBuffer(const BufferDesc& BuffDesc,
+                                               IDeviceMemory*    pMemory,
+                                               Uint64            MemoryOffset,
+                                               IBuffer**         ppBuffer)
+{
+    DEV_CHECK_ERR(pMemory != nullptr, "pMemory must not be null");
+    DEV_CHECK_ERR(ppBuffer != nullptr, "ppBuffer must not be null");
+    if (!pMemory || !ppBuffer)
+        return;
+    CreateBufferImpl(ppBuffer, BuffDesc, pMemory, MemoryOffset);
+}
+
 
 void RenderDeviceD3D12Impl::CreateShader(const ShaderCreateInfo& ShaderCI,
                                          IShader**               ppShader,
@@ -615,6 +640,30 @@ void RenderDeviceD3D12Impl::CreateTexture(const TextureDesc& TexDesc, ID3D12Reso
 void RenderDeviceD3D12Impl::CreateTexture(const TextureDesc& TexDesc, const TextureData* pData, ITexture** ppTexture)
 {
     CreateTextureImpl(ppTexture, TexDesc, pData);
+}
+
+void RenderDeviceD3D12Impl::GetTextureMemoryRequirements(const TextureDesc& TexDesc, MemoryRequirements* pRequirements)
+{
+    if (pRequirements == nullptr) return;
+
+    D3D12_RESOURCE_DESC Desc = TextureD3D12Impl::GetD3D12ResourceDesc(TexDesc);
+
+    D3D12_RESOURCE_ALLOCATION_INFO info = m_pd3d12Device->GetResourceAllocationInfo(0, 1, &Desc);
+    pRequirements->Size           = info.SizeInBytes;
+    pRequirements->Alignment      = info.Alignment;
+    pRequirements->MemoryTypeBits = 0;
+}
+
+void RenderDeviceD3D12Impl::CreatePlacedTexture(const TextureDesc& TexDesc,
+                                                IDeviceMemory*     pMemory,
+                                                Uint64             MemoryOffset,
+                                                ITexture**         ppTexture)
+{
+    DEV_CHECK_ERR(pMemory != nullptr, "pMemory must not be null");
+    DEV_CHECK_ERR(ppTexture != nullptr, "ppTexture must not be null");
+    if (!pMemory || !ppTexture)
+        return;
+    CreateTextureImpl(ppTexture, TexDesc, pMemory, MemoryOffset);
 }
 
 void RenderDeviceD3D12Impl::CreateSampler(const SamplerDesc& SamplerDesc, ISampler** ppSampler)

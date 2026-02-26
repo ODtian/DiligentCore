@@ -56,6 +56,13 @@ public:
 
     BufferVkImpl(IReferenceCounters*        pRefCounters,
                  FixedBlockMemoryAllocator& BuffViewObjMemAllocator,
+                 RenderDeviceVkImpl*        pDeviceVk,
+                 const BufferDesc&          BuffDesc,
+                 IDeviceMemory*             pMemory,
+                 Uint64                     MemoryOffset);
+
+    BufferVkImpl(IReferenceCounters*        pRefCounters,
+                 FixedBlockMemoryAllocator& BuffViewObjMemAllocator,
                  class RenderDeviceVkImpl*  pDeviceVk,
                  const BufferDesc&          BuffDesc,
                  RESOURCE_STATE             InitialState,
@@ -87,6 +94,11 @@ public:
     virtual void DILIGENT_CALL_TYPE InvalidateMappedRange(Uint64 StartOffset,
                                                           Uint64 Size) override final;
 
+    /// Implementation of IBuffer::GetSparseProperties().
+    virtual SparseBufferProperties DILIGENT_CALL_TYPE GetSparseProperties() const override final;
+
+    static VkBufferCreateInfo BufferDescToVkBufferCreateInfo(const BufferDesc& Desc, const class RenderDeviceVkImpl* pRenderDeviceVk, std::vector<uint32_t>& QueueFamilyIndices);
+
     bool CheckAccessFlags(VkAccessFlags AccessFlags) const
     {
         return (GetAccessFlags() & AccessFlags) == AccessFlags;
@@ -113,6 +125,7 @@ private:
 
     VulkanUtilities::BufferWrapper    m_VulkanBuffer;
     VulkanUtilities::MemoryAllocation m_MemoryAllocation;
+    IDeviceMemory*                    m_pPlacedMemory = nullptr;
 };
 
 } // namespace Diligent

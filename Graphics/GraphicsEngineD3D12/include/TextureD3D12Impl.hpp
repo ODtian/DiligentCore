@@ -53,6 +53,13 @@ public:
                      const TextureDesc&         TexDesc,
                      const TextureData*         pInitData = nullptr);
 
+    TextureD3D12Impl(IReferenceCounters*        pRefCounters,
+                     FixedBlockMemoryAllocator& TexViewObjAllocator,
+                     RenderDeviceD3D12Impl*     pDeviceD3D12,
+                     const TextureDesc&         TexDesc,
+                     IDeviceMemory*             pMemory,
+                     Uint64                     MemoryOffset);
+
     // Attaches to an existing D3D12 resource
     TextureD3D12Impl(IReferenceCounters*          pRefCounters,
                      FixedBlockMemoryAllocator&   TexViewObjAllocator,
@@ -77,7 +84,7 @@ public:
     virtual D3D12_RESOURCE_STATES DILIGENT_CALL_TYPE GetD3D12ResourceState() const override final;
 
     D3D12_RESOURCE_DESC GetD3D12TextureDesc() const;
-
+    static D3D12_RESOURCE_DESC GetD3D12ResourceDesc(const TextureDesc& Desc);
     const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& GetStagingFootprint(Uint32 Subresource)
     {
         VERIFY_EXPR(m_StagingFootprints != nullptr);
@@ -106,6 +113,7 @@ protected:
     void InitSparseProperties();
 
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT* m_StagingFootprints = nullptr;
+    IDeviceMemory*                        m_pPlacedMemory    = nullptr;
 };
 
 } // namespace Diligent

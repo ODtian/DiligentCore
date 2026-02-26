@@ -38,10 +38,7 @@
 namespace Diligent
 {
 
-namespace
-{
-
-VkImageCreateInfo TextureDescToVkImageCreateInfo(const TextureDesc& Desc, const RenderDeviceVkImpl* pRenderDeviceVk) noexcept
+VkImageCreateInfo TextureVkImpl::TextureDescToVkImageCreateInfo(const TextureDesc& Desc, const RenderDeviceVkImpl* pRenderDeviceVk)
 {
     const bool                  IsMemoryless         = (Desc.MiscFlags & MISC_TEXTURE_FLAG_MEMORYLESS) != 0;
     const TextureFormatAttribs& FmtAttribs           = GetTextureFormatAttribs(Desc.Format);
@@ -147,6 +144,8 @@ VkImageCreateInfo TextureDescToVkImageCreateInfo(const TextureDesc& Desc, const 
     return ImageCI;
 }
 
+namespace {
+
 VkImageLayout VkImageLayoutFromUsage(VkImageUsageFlags Usage)
 {
     if ((Usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) != 0)
@@ -242,7 +241,7 @@ TextureVkImpl::TextureVkImpl(IReferenceCounters*        pRefCounters,
         VERIFY(m_Desc.Usage != USAGE_DYNAMIC || PlatformMisc::CountOneBits(m_Desc.ImmediateContextMask) <= 1,
                "ImmediateContextMask must contain single set bit, this error should've been handled in ValidateTextureDesc()");
 
-        VkImageCreateInfo ImageCI = TextureDescToVkImageCreateInfo(m_Desc, pRenderDeviceVk);
+        VkImageCreateInfo ImageCI = TextureVkImpl::TextureDescToVkImageCreateInfo(m_Desc, pRenderDeviceVk);
 
         const bool InitContent           = pInitData != nullptr && pInitData->pSubResources != nullptr && pInitData->NumSubresources > 0;
         const bool UseHostInitialization = InitContent && CheckHostImageInitialization(LogicalDevice, pRenderDeviceVk->GetPhysicalDevice(), ImageCI);
@@ -680,6 +679,37 @@ void TextureVkImpl::CreateStagingTexture(const TextureData* pInitData, const Tex
 
 TextureVkImpl::TextureVkImpl(IReferenceCounters*        pRefCounters,
                              FixedBlockMemoryAllocator& TexViewObjAllocator,
+                             RenderDeviceVkImpl*        pRenderDeviceVk,
+                             const TextureDesc&         TexDesc,
+                             IDeviceMemory*             pMemory,
+                             Uint64                     MemoryOffset) :
+    TTextureBase{pRefCounters, TexViewObjAllocator, pRenderDeviceVk, TexDesc}
+{
+    const VulkanUtilities::LogicalDevice& LogicalDevice = pRenderDeviceVk->GetLogicalDevice();
+
+    VkImageCreateInfo ImageCI = TextureVkImpl::TextureDescToVkImageCreateInfo(m_Desc, pRenderDeviceVk);
+
+    m_VulkanImage = LogicalDevice.CreateImage(ImageCI, m_Desc.Name);
+
+    IDeviceMemoryVk*    pDevMemVk = ClassPtrCast<IDeviceMemoryVk>(pMemory);
+    VkMemoryRequirements MemReqs  = LogicalDevice.GetImageMemoryRequirements(m_VulkanImage);
+    DeviceMemoryRangeVk  range    = pDevMemVk->GetRange(MemoryOffset, MemReqs.size);
+
+    VkResult err = LogicalDevice.BindImageMemory(m_VulkanImage, range.Handle, range.Offset);
+    if (err != VK_SUCCESS)
+    {
+        LogicalDevice.ReleaseVulkanObject(std::move(m_VulkanImage));
+        LOG_ERROR_AND_THROW("Failed to bind image memory");
+    }
+
+    SetState(RESOURCE_STATE_UNDEFINED);
+
+    m_pPlacedMemory = pMemory;
+    m_pPlacedMemory->AddRef();
+}
+
+TextureVkImpl::TextureVkImpl(IReferenceCounters*        pRefCounters,
+                             FixedBlockMemoryAllocator& TexViewObjAllocator,
                              RenderDeviceVkImpl*        pDeviceVk,
                              const TextureDesc&         TexDesc,
                              RESOURCE_STATE             InitialState,
@@ -734,6 +764,8 @@ TextureVkImpl::~TextureVkImpl()
     if (m_StagingBuffer)
         m_pDevice->SafeReleaseDeviceObject(std::move(m_StagingBuffer), m_Desc.ImmediateContextMask);
     m_pDevice->SafeReleaseDeviceObject(std::move(m_MemoryAllocation), m_Desc.ImmediateContextMask);
+    if (m_pPlacedMemory)
+        m_pPlacedMemory->Release();
 }
 
 VulkanUtilities::ImageViewWrapper TextureVkImpl::CreateImageView(TextureViewDesc& ViewDesc)

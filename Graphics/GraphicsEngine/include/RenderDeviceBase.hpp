@@ -302,6 +302,26 @@ public:
         UNSUPPORTED("Tile pipeline is not supported by this device. Please check DeviceFeatures.TileShaders feature.");
     }
 
+    virtual void DILIGENT_CALL_TYPE GetBufferMemoryRequirements(const BufferDesc& Desc, MemoryRequirements* pRequirements) override
+    {
+        UNSUPPORTED("GetBufferMemoryRequirements is not supported by this device.");
+    }
+
+    virtual void DILIGENT_CALL_TYPE CreatePlacedBuffer(const BufferDesc& BuffDesc, IDeviceMemory* pMemory, Uint64 MemoryOffset, IBuffer** ppBuffer) override
+    {
+        UNSUPPORTED("CreatePlacedBuffer is not supported by this device.");
+    }
+
+    virtual void DILIGENT_CALL_TYPE GetTextureMemoryRequirements(const TextureDesc& Desc, MemoryRequirements* pRequirements) override
+    {
+        UNSUPPORTED("GetTextureMemoryRequirements is not supported by this device.");
+    }
+
+    virtual void DILIGENT_CALL_TYPE CreatePlacedTexture(const TextureDesc& TexDesc, IDeviceMemory* pMemory, Uint64 MemoryOffset, ITexture** ppTexture) override
+    {
+        UNSUPPORTED("CreatePlacedTexture is not supported by this device.");
+    }
+
     /// Set weak reference to the immediate context
     void SetImmediateContext(size_t Ctx, DeviceContextImplType* pImmediateContext)
     {
